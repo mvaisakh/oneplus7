@@ -7,6 +7,7 @@
 		qcom,dsi-phy-num = <0>;
 		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
 		qcom,dsi-panel = <&dsi_samsung_oneplus_dsc_cmd>;
+		qcom,ulps-enabled;
 	};
 
 	dsi_samsung_s6e3fc2x01_cmd_display: qcom,dsi-display@24 {
@@ -16,6 +17,7 @@
 		qcom,dsi-phy-num = <0>;
 		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
 		qcom,dsi-panel = <&dsi_samsung_s6e3fc2x01_cmd>;
+		qcom,ulps-enabled;
 	};
 
 	dsi_samsung_sofef03f_m_fhd_dsc_cmd_display: qcom,dsi-display@25 {
@@ -25,6 +27,7 @@
 		qcom,dsi-phy-num = <0>;
 		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
 		qcom,dsi-panel = <&dsi_samsung_sofef03f_m_fhd_dsc_cmd>;
+		qcom,ulps-enabled;
 	};
 	dsi_samsung_findx_dsc_cmd_display: qcom,dsi-display@26 {
 		label = "dsi_samsung_findx_dsc_cmd_display";
@@ -42,6 +45,7 @@
 		qcom,dsi-phy-num = <0>;
 		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
 		qcom,dsi-panel = <&dsi_samsung_sofef00_m_video>;
+		qcom,ulps-enabled;
 	};
 
 
