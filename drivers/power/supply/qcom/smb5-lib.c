@@ -465,16 +465,17 @@ int op_rerun_apsd(struct smb_charger *chg)
 
 	if (!val.intval)
 		return 0;
-		/* rerun APSD */
-		pr_info("OP Reruning APSD type\n");
-		chg->switch_on_fastchg = false;
-		rc = smblib_masked_write(chg, CMD_APSD_REG,
-					APSD_RERUN_BIT,
-					APSD_RERUN_BIT);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't rerun APSD rc = %d\n", rc);
-			return rc;
-		}
+
+	/* rerun APSD */
+	pr_info("OP Reruning APSD type\n");
+	chg->switch_on_fastchg = false;
+	rc = smblib_masked_write(chg, CMD_APSD_REG,
+				APSD_RERUN_BIT,
+				APSD_RERUN_BIT);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't rerun APSD rc = %d\n", rc);
+		return rc;
+	}
 	return 0;
 }
 
@@ -3700,11 +3701,12 @@ int smblib_get_prop_usb_voltage_now(struct smb_charger *chg,
 
 restore_adc_config:
 	 /* Restore ADC channel config */
-	if (chg->wa_flags & USBIN_ADC_WA)
+	if (chg->wa_flags & USBIN_ADC_WA) {
 		rc = smblib_write(chg, BATIF_ADC_CHANNEL_EN_REG, reg);
 		if (rc < 0)
 			smblib_err(chg, "Couldn't write ADC config rc=%d\n",
 						rc);
+	}
 
 unlock:
 	mutex_unlock(&chg->adc_lock);
