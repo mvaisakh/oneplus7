@@ -64,7 +64,7 @@ DEVICE="oneplus7series"
 
 # The defconfig which should be used. Get it from config.gz from
 # your device or check source
-DEFCONFIG=vendor/sm8150-perf_defconfig
+DEFCONFIG=oneplus7_defconfig
 
 # Specify compiler. 
 # 'clang' or 'gcc'
