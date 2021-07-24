@@ -194,6 +194,7 @@ obj-y  += step_motor/
 obj-y += infrared_proximity/infrared_power_control.o
 obj-y                           += oneplus/
 
+obj-y  += param_read_write/
 # GNSS driver
 obj-$(CONFIG_GNSS_SIRF)		+= gnsssirf/
 obj-$(CONFIG_GNSS)		+= gnss/
