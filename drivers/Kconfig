@@ -230,4 +230,7 @@ source "drivers/vibrator/Kconfig"
 source "drivers/tri_state_key/Kconfig"
 
 source "drivers/step_motor/Kconfig"
+
+source "drivers/oneplus/Kconfig"
+
 endmenu
