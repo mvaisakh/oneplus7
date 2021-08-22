@@ -705,6 +705,12 @@ LDFINAL		:= $(LD)
 export LDFINAL
 endif
 
+# According gcc docs when using computed gotos, disabling
+# gcse could result in better runtime performing
+ifneq ($(cc-name),clang)
+KBUILD_CFLAGS   += -fno-gcse
+endif
+
 ifdef CONFIG_GCC_GRAPHITE
 KBUILD_CFLAGS	+= -fgraphite-identity -floop-nest-optimize
 endif
