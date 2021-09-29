@@ -191,7 +191,7 @@ obj-$(CONFIG_ESOC)              += esoc/
 obj-$(CONFIG_AW8697_HAPTIC)     += vibrator/
 obj-$(CONFIG_TRI_STATE_KEY)     += tri_state_key/
 obj-y  += step_motor/
-obj-y += infrared_proximity/infrared_power_control.o
+obj-y += infrared_proximity/
 obj-y                           += oneplus/
 
 obj-y  += param_read_write/
