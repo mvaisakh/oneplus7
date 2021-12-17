@@ -97,19 +97,6 @@ BUILD_DTBO=0
 		DTBO_PATH="xiaomi/violet-sm6150-overlay.dtbo"
 	fi
 
-# Sign the zipfile
-# 1 is YES | 0 is NO
-SIGN=1
-	if [ $SIGN = 1 ]
-	then
-		#Check for java
-		if command -v java > /dev/null 2>&1; then
-			SIGN=1
-		else
-			SIGN=0
-		fi
-	fi
-
 # Silence the compilation
 # 1 is YES(default) | 0 is NO
 SILENCE=0
@@ -329,19 +316,6 @@ gen_zip() {
 
 	## Prepare a final zip variable
 	ZIP_FINAL="$ZIPNAME-$DEVICE-$DATE"
-
-	if [ $SIGN = 1 ]
-	then
-		## Sign the zip before sending it to telegram
-		if [ "$PTTG" = 1 ]
- 		then
- 			msg "|| Signing Zip ||"
-			tg_post_msg "<code>Signing Zip file with AOSP keys..</code>"
- 		fi
-		curl -sLo zipsigner-3.0.jar https://raw.githubusercontent.com/baalajimaestro/AnyKernel2/master/zipsigner-3.0.jar
-		java -jar zipsigner-3.0.jar "$ZIP_FINAL".zip "$ZIP_FINAL"-signed.zip
-		ZIP_FINAL="$ZIP_FINAL-signed"
-	fi
 
 	if [ "$PTTG" = 1 ]
  	then
