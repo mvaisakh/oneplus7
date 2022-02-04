@@ -31,6 +31,10 @@ config SECURITY
 
 	  If you are unsure how to answer this question, answer N.
 
+config SECURITY_PERF_EVENTS_RESTRICT
+	bool "Stub to satisfy AOSP userspace"
+	default y if ANDROID
+
 config SECURITY_WRITABLE_HOOKS
 	depends on SECURITY
 	bool
