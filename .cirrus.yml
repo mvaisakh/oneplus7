@@ -1,0 +1,11 @@
+task:
+    name: Kernel
+    container:
+      image: panchajanya1999/archlinux:latest
+      cpu: 8
+      memory: 16G
+    script: pacman -Syu --no-confirm cpio && bash kramel-build.sh
+
+env:
+    CIRRUS_CLONE_DEPTH: 1
+    token: ENCRYPTED[!db4a0d4e6066ba46822039296f286fb60d4879928e8d96355ff5279acbb48c2f68edaa5c9b9997bb610236be161b5f7a!]
