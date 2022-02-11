@@ -29,10 +29,6 @@
 #include <linux/usb/usbpd.h>
 #include "usbpd.h"
 
-static bool usb_compliance_mode;
-module_param(usb_compliance_mode, bool, 0644);
-MODULE_PARM_DESC(usb_compliance_mode, "USB3.1 compliance testing");
-
 enum usbpd_state {
 	PE_UNKNOWN,
 	PE_ERROR_RECOVERY,
@@ -420,9 +416,8 @@ struct usbpd {
 	bool			peer_usb_comm;
 	bool			peer_pr_swap;
 	bool			peer_dr_swap;
-	bool		oem_bypass;
-	bool		periph_direct;
 	bool			no_usb3dp_concurrency;
+	bool			pd20_source_only;
 
 	u32			sink_caps[7];
 	int			num_sink_caps;
@@ -436,7 +431,6 @@ struct usbpd {
 	int			bat_voltage_max;
 
 	enum power_supply_typec_mode typec_mode;
-	enum power_supply_type	psy_type;
 	enum power_supply_typec_power_role forced_pr;
 	bool			vbus_present;
 
@@ -1352,7 +1346,6 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 	};
 	union power_supply_propval val = {0};
 	unsigned long flags;
-	bool disconnect_pd;
 	int ret;
 
 	if (pd->hard_reset_recvd) /* let usbpd_sm handle it */
@@ -1408,7 +1401,10 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 			 * support up to PD 3.0; if peer is 2.0
 			 * phy_msg_received() will handle the downgrade.
 			 */
-			pd->spec_rev = USBPD_REV_30;
+			if (pd->pd20_source_only)
+				pd->spec_rev = USBPD_REV_20;
+			else
+				pd->spec_rev = USBPD_REV_30;
 
 			if (pd->pd_phy_opened) {
 				pd_phy_close();
@@ -1418,11 +1414,9 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 			phy_params.data_role = pd->current_dr;
 			phy_params.power_role = pd->current_pr;
 
-			/* add for pd+swrap compitable charger
 			if (pd->vconn_enabled)
 				phy_params.frame_filter_val |=
 					FRAME_FILTER_EN_SOPI;
-			*/
 
 			ret = pd_phy_open(&phy_params);
 			if (ret) {
@@ -1491,21 +1485,17 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 			}
 
 			usbpd_err(&pd->dev, "Invalid request: %08x\n", pd->rdo);
-			if (pd->oem_bypass) {
-				usbpd_info(&pd->dev, "oem bypass invalid request!\n");
-			} else {
-				if (pd->in_explicit_contract)
-					usbpd_set_state(pd, PE_SRC_READY);
-				else
-					/*
-					 * bypass PE_SRC_Capability_Response and
-					 * PE_SRC_Wait_New_Capabilities in this
-					 * implementation for simplicity.
-					 */
-					usbpd_set_state(pd,
-						PE_SRC_SEND_CAPABILITIES);
-				break;
-			}
+
+			if (pd->in_explicit_contract)
+				usbpd_set_state(pd, PE_SRC_READY);
+			else
+				/*
+				 * bypass PE_SRC_Capability_Response and
+				 * PE_SRC_Wait_New_Capabilities in this
+				 * implementation for simplicity.
+				 */
+				usbpd_set_state(pd, PE_SRC_SEND_CAPABILITIES);
+			break;
 		}
 
 		/* PE_SRC_TRANSITION_SUPPLY pseudo-state */
@@ -1574,18 +1564,8 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 
 	case PE_SRC_HARD_RESET:
 	case PE_SNK_HARD_RESET:
-		ret = power_supply_get_property(pd->usb_psy,
-			POWER_SUPPLY_PROP_DISCONNECT_PD, &val);
-		if (ret) {
-			usbpd_err(&pd->dev, "Unable to read USB DISCONNECT_PD: %d\n", ret);
-			disconnect_pd = false;
-		} else {
-			disconnect_pd = val.intval;
-		}
-
 		/* are we still connected? */
-		if (pd->typec_mode == POWER_SUPPLY_TYPEC_NONE || disconnect_pd) {
-			pd->typec_mode = POWER_SUPPLY_TYPEC_NONE;
+		if (pd->typec_mode == POWER_SUPPLY_TYPEC_NONE) {
 			pd->current_pr = PR_NONE;
 			kick_sm(pd, 0);
 			break;
@@ -1643,15 +1623,6 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 			pd->current_dr = DR_UFP;
 
 			ret = power_supply_get_property(pd->usb_psy,
-							POWER_SUPPLY_PROP_DISCONNECT_PD, &val);
-	if (ret) {
-		usbpd_err(&pd->dev, "Unable to read USB DISCONNECT_PD: %d\n", ret);
-		return;
-	}
-	if (val.intval)
-		return;
-
-	ret = power_supply_get_property(pd->usb_psy,
 					POWER_SUPPLY_PROP_REAL_TYPE, &val);
 			if (!ret) {
 				usbpd_dbg(&pd->dev, "type:%d\n", val.intval);
@@ -1680,11 +1651,9 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 			phy_params.data_role = pd->current_dr;
 			phy_params.power_role = pd->current_pr;
 
-			/* add for pd+swrap compitable charger
 			if (pd->vconn_enabled)
 				phy_params.frame_filter_val |=
 					FRAME_FILTER_EN_SOPI;
-			*/
 
 			ret = pd_phy_open(&phy_params);
 			if (ret) {
@@ -1990,17 +1959,17 @@ static void handle_vdm_rx(struct usbpd *pd, struct rx_msg *rx_msg)
 	switch (cmd_type) {
 	case SVDM_CMD_TYPE_INITIATOR:
 		if (cmd != USBPD_SVDM_ATTENTION) {
-//			if (pd->spec_rev == USBPD_REV_30) {
-//				ret = pd_send_msg(pd, MSG_NOT_SUPPORTED, NULL,
-//						0, SOP_MSG);
-//				if (ret)
-//					usbpd_set_state(pd, PE_SEND_SOFT_RESET);
-//			} else {
+			if (pd->spec_rev == USBPD_REV_30) {
+				ret = pd_send_msg(pd, MSG_NOT_SUPPORTED, NULL,
+						0, SOP_MSG);
+				if (ret)
+					usbpd_set_state(pd, PE_SEND_SOFT_RESET);
+			} else {
 				usbpd_send_svdm(pd, svid, cmd,
 						SVDM_CMD_TYPE_RESP_NAK,
 						SVDM_HDR_OBJ_POS(vdm_hdr),
 						NULL, 0);
-//			}
+			}
 		}
 		break;
 
@@ -2027,6 +1996,19 @@ static void handle_vdm_rx(struct usbpd *pd, struct rx_msg *rx_msg)
 				break;
 			}
 
+			if (ID_HDR_PRODUCT_TYPE(vdos[0]) ==
+					ID_HDR_PRODUCT_VPD) {
+				usbpd_dbg(&pd->dev, "VPD detected turn off vbus\n");
+
+				if (pd->vbus_enabled) {
+					ret = regulator_disable(pd->vbus);
+					if (ret)
+						usbpd_err(&pd->dev, "Err disabling vbus (%d)\n",
+								ret);
+					else
+						pd->vbus_enabled = false;
+				}
+			}
 
 			if (!pd->in_explicit_contract)
 				break;
@@ -2425,6 +2407,7 @@ static void vconn_swap(struct usbpd *pd)
 		pd->vconn_enabled = true;
 
 		pd_phy_update_frame_filter(FRAME_FILTER_EN_SOP |
+					   FRAME_FILTER_EN_SOPI |
 					   FRAME_FILTER_EN_HARD_RESET);
 
 		/*
@@ -2504,8 +2487,8 @@ enable_reg:
 /* For PD 3.0, check SinkTxOk before allowing initiating AMS */
 static inline bool is_sink_tx_ok(struct usbpd *pd)
 {
-//	if (pd->spec_rev == USBPD_REV_30)
-//		return pd->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH;
+	if (pd->spec_rev == USBPD_REV_30)
+		return pd->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH;
 
 	return true;
 }
@@ -2544,7 +2527,7 @@ static void usbpd_sm(struct work_struct *w)
 			pd->vconn_enabled = false;
 		}
 
-		usbpd_dbg(&pd->dev, "USB Type-C disconnect\n");
+		usbpd_info(&pd->dev, "USB Type-C disconnect\n");
 
 		if (pd->pd_phy_opened) {
 			pd_phy_close();
@@ -2721,7 +2704,10 @@ static void usbpd_sm(struct work_struct *w)
 		 * Emarker may have negotiated down to rev 2.0.
 		 * Reset to 3.0 to begin SOP communication with sink
 		 */
-		pd->spec_rev = USBPD_REV_30;
+		if (pd->pd20_source_only)
+			pd->spec_rev = USBPD_REV_20;
+		else
+			pd->spec_rev = USBPD_REV_30;
 
 		pd->current_state = PE_SRC_SEND_CAPABILITIES;
 		kick_sm(pd, ms);
@@ -3488,15 +3474,6 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 		return 0;
 
 	ret = power_supply_get_property(pd->usb_psy,
-			POWER_SUPPLY_PROP_DISCONNECT_PD, &val);
-	if (ret) {
-		usbpd_err(&pd->dev, "Unable to read USB DISCONNECT_PD: %d\n", ret);
-		return ret;
-	}
-	if (val.intval)
-		return 0;
-
-	ret = power_supply_get_property(pd->usb_psy,
 			POWER_SUPPLY_PROP_TYPEC_MODE, &val);
 	if (ret) {
 		usbpd_err(&pd->dev, "Unable to read USB TYPEC_MODE: %d\n", ret);
@@ -3513,11 +3490,8 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 		return ret;
 	}
 
-	if (usb_compliance_mode)
-		pd->periph_direct = true;
-
 	/* Don't proceed if PE_START=0; start USB directly if needed */
-	if (pd->periph_direct && !val.intval && !pd->pd_connected &&
+	if (!val.intval && !pd->pd_connected &&
 			typec_mode >= POWER_SUPPLY_TYPEC_SOURCE_DEFAULT) {
 		ret = power_supply_get_property(pd->usb_psy,
 				POWER_SUPPLY_PROP_REAL_TYPE, &val);
@@ -3529,9 +3503,8 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 
 		if (val.intval == POWER_SUPPLY_TYPE_USB ||
 			val.intval == POWER_SUPPLY_TYPE_USB_CDP ||
-			val.intval == POWER_SUPPLY_TYPE_USB_FLOAT ||
-			usb_compliance_mode) {
-			usbpd_info(&pd->dev, "typec mode:%d type:%d\n",
+			val.intval == POWER_SUPPLY_TYPE_USB_FLOAT) {
+			usbpd_dbg(&pd->dev, "typec mode:%d type:%d\n",
 				typec_mode, val.intval);
 			pd->typec_mode = typec_mode;
 			queue_work(pd->wq, &pd->start_periph_work);
@@ -3574,17 +3547,8 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 
 	pd->typec_mode = typec_mode;
 
-	ret = power_supply_get_property(pd->usb_psy,
-			POWER_SUPPLY_PROP_REAL_TYPE, &val);
-	if (ret) {
-		usbpd_err(&pd->dev, "Unable to read USB TYPE: %d\n", ret);
-		return ret;
-	}
-
-	pd->psy_type = val.intval;
-
-	usbpd_dbg(&pd->dev, "typec mode:%d present:%d type:%d orientation:%d\n",
-			typec_mode, pd->vbus_present, pd->psy_type,
+	usbpd_dbg(&pd->dev, "typec mode:%d present:%d orientation:%d\n",
+			typec_mode, pd->vbus_present,
 			usbpd_get_plug_orientation(pd));
 
 	switch (typec_mode) {
@@ -3602,7 +3566,7 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 	case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
 	case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
 	case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
-		usbpd_dbg(&pd->dev, "Type-C Source (%s) connected\n",
+		usbpd_info(&pd->dev, "Type-C Source (%s) connected\n",
 				src_current(typec_mode));
 
 		/* if waiting for SinkTxOk to start an AMS */
@@ -3639,12 +3603,8 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 				typec_mode == POWER_SUPPLY_TYPEC_SINK ?
 					"" : " (powered)");
 
-		usbpd_info(&pd->dev, "primary current_pr = %d\n",
-				pd->current_pr);
-		if (pd->current_pr == PR_SRC) {
-			pr_err("pd->current_pr == PR_SRC PR no change return!\n");
+		if (pd->current_pr == PR_SRC)
 			return 0;
-		}
 
 		pd->current_pr = PR_SRC;
 		break;
@@ -4694,6 +4654,10 @@ struct usbpd *usbpd_create(struct device *parent)
 
 	if (device_property_read_bool(parent, "qcom,no-usb3-dp-concurrency"))
 		pd->no_usb3dp_concurrency = true;
+
+	if (device_property_read_bool(parent, "qcom,pd-20-source-only"))
+		pd->pd20_source_only = true;
+
 	/*
 	 * Register the Android dual-role class (/sys/class/dual_role_usb/).
 	 * The first instance should be named "otg_default" as that's what
@@ -4725,8 +4689,6 @@ struct usbpd *usbpd_create(struct device *parent)
 		pd->dual_role->drv_data = pd;
 	}
 
-	pd->oem_bypass = true;
-	pd->periph_direct = false;
 	pd->current_pr = PR_NONE;
 	pd->current_dr = DR_NONE;
 	list_add_tail(&pd->instance, &_usbpd);
