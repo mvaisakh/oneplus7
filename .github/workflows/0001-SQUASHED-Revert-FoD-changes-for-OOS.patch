@@ -1,0 +1,101 @@
+From fbdc044eda60222a73fe29ccb76cc84333dea4f5 Mon Sep 17 00:00:00 2001
+From: Vaisakh Murali <mvaisakh@statixos.com>
+Date: Sun, 6 Mar 2022 15:23:43 +0600
+Subject: [PATCH] [SQUASHED] Revert FoD changes for OOS
+
+Change-Id: If5abb25ae25a24dfd6f4ab67735c606f5a268d02
+---
+ drivers/gpu/drm/msm/sde/sde_plane.c | 38 ++++++++++++++---------------
+ include/uapi/drm/sde_drm.h          |  5 ----
+ 2 files changed, 19 insertions(+), 24 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/sde/sde_plane.c b/drivers/gpu/drm/msm/sde/sde_plane.c
+index 569f0cd6958e..f17281f3cb19 100644
+--- a/drivers/gpu/drm/msm/sde/sde_plane.c
++++ b/drivers/gpu/drm/msm/sde/sde_plane.c
+@@ -4393,7 +4393,7 @@ static void _sde_plane_install_properties(struct drm_plane *plane,
+ 	const struct sde_format_extended *format_list;
+ 	struct sde_kms_info *info;
+ 	struct sde_plane *psde = to_sde_plane(plane);
+-	int zpos_max = INT_MAX;
++	int zpos_max = 255;
+ 	int zpos_def = 0;
+ 	char feature_name[256];
+ 
+@@ -4411,6 +4411,22 @@ static void _sde_plane_install_properties(struct drm_plane *plane,
+ 
+ 	psde->catalog = catalog;
+ 
++	if (sde_is_custom_client()) {
++		if (catalog->mixer_count &&
++				catalog->mixer[0].sblk->maxblendstages) {
++			zpos_max = catalog->mixer[0].sblk->maxblendstages - 1;
++
++			if (catalog->has_base_layer &&
++					(zpos_max > SDE_STAGE_MAX - 1))
++				zpos_max = SDE_STAGE_MAX - 1;
++			else if (zpos_max > SDE_STAGE_MAX - SDE_STAGE_0 - 1)
++				zpos_max = SDE_STAGE_MAX - SDE_STAGE_0 - 1;
++		}
++	} else if (plane->type != DRM_PLANE_TYPE_PRIMARY) {
++		/* reserve zpos == 0 for primary planes */
++		zpos_def = drm_plane_index(plane) + 1;
++	}
++
+ 	msm_property_install_range(&psde->property_info, "zpos",
+ 		0x0, 0, zpos_max, zpos_def, PLANE_PROP_ZPOS);
+ 
+@@ -4853,8 +4869,6 @@ static int sde_plane_atomic_set_property(struct drm_plane *plane,
+ {
+ 	struct sde_plane *psde = plane ? to_sde_plane(plane) : NULL;
+ 	struct sde_plane_state *pstate;
+-	struct drm_property *fod_property;
+-	int fod_val = 0;
+ 	int idx, ret = -EINVAL;
+ 
+ 	SDE_DEBUG_PLANE(psde, "\n");
+@@ -4865,25 +4879,11 @@ static int sde_plane_atomic_set_property(struct drm_plane *plane,
+ 		SDE_ERROR_PLANE(psde, "invalid state\n");
+ 	} else {
+ 		pstate = to_sde_plane_state(state);
+-		idx = msm_property_index(&psde->property_info,
+-				property);
+-		if (idx == PLANE_PROP_ZPOS) {
+-			if (val & FOD_PRESSED_LAYER_ZORDER) {
+-				val &= ~FOD_PRESSED_LAYER_ZORDER;
+-				fod_val = 2; // pressed
+-			}
+-
+-			fod_property = psde->property_info.
+-					property_array[PLANE_PROP_CUSTOM];
+-			ret = msm_property_atomic_set(&psde->property_info,
+-					&pstate->property_state,
+-					fod_property, fod_val);
+-			if (ret)
+-				SDE_ERROR("failed to set fod prop");
+-		}
+ 		ret = msm_property_atomic_set(&psde->property_info,
+ 				&pstate->property_state, property, val);
+ 		if (!ret) {
++			idx = msm_property_index(&psde->property_info,
++					property);
+ 			switch (idx) {
+ 			case PLANE_PROP_INPUT_FENCE:
+ 				_sde_plane_set_input_fence(psde, pstate, val);
+diff --git a/include/uapi/drm/sde_drm.h b/include/uapi/drm/sde_drm.h
+index 7676aaed21dc..d241a307f4ec 100644
+--- a/include/uapi/drm/sde_drm.h
++++ b/include/uapi/drm/sde_drm.h
+@@ -495,9 +495,4 @@ struct sde_drm_roi_misr_v1 {
+ #define SDE_RECOVERY_CAPTURE		1
+ #define SDE_RECOVERY_HARD_RESET		2
+ 
+-/**
+- * sde fod dim layer
+- */
+-#define FOD_PRESSED_LAYER_ZORDER 0x20000000u
+-
+ #endif /* _SDE_DRM_H_ */
+-- 
+2.35.1
+
