@@ -1,0 +1,6 @@
+ARCH=arm64
+CROSS_COMPILE=aarch64-elf-
+CC=aarch64-elf-gcc
+DEFCONFIG=oneplus7_defconfig
+KERNEL_DIR=kernel/oneplus/sm8150
+LINUX_GCC_CROSS_COMPILE_PREBUILTS_BIN=prebuilts/gcc/host/linux-x86/aarch64-elf/bin
