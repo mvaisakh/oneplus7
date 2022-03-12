@@ -56,6 +56,7 @@ jobs:
           echo "CONFIG_SDCARD_FS=y" >> arch/arm64/configs/oneplus7_defconfig
           git config --global user.name ${USERNAME}
           git config --global user.email ${USEREMAIL}
+          git am -3 < .github/workflows/0001-SQUASHED-Revert-for-Touchscreen-gestures.patch
           git am -3 < .github/workflows/0001-SQUASHED-Revert-FoD-changes-for-OOS.patch
           bash kramel-build.sh
         env:
