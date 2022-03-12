@@ -54,7 +54,11 @@ jobs:
           sed s/EvaKernel/EvaKernel-OxygenOS/ -i kramel-build.sh
           sed s/\-eva/\-eva-OxygenOS/ -i Makefile
           echo "CONFIG_SDCARD_FS=y" >> arch/arm64/configs/oneplus7_defconfig
-          git apply .github/workflows/0001-SQUASHED-Revert-FoD-changes-for-OOS.patch
+          git config --global user.name ${USERNAME}
+          git config --global user.email ${USEREMAIL}
+          git am -3 < .github/workflows/0001-SQUASHED-Revert-FoD-changes-for-OOS.patch
           bash kramel-build.sh
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          USERNAME: ${{ secrets.USERNAME }}
+          USEREMAIL: ${{ secrets.EMAIL }}
