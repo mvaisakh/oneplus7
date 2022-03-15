@@ -422,8 +422,6 @@ bool keyslot_manager_crypto_mode_supported(struct keyslot_manager *ksm,
 		return false;
 	if (WARN_ON(crypto_mode >= BLK_ENCRYPTION_MODE_MAX))
 		return false;
-	if (WARN_ON(!is_power_of_2(data_unit_size)))
-		return false;
 	if (is_hw_wrapped_key) {
 		if (!(ksm->features & BLK_CRYPTO_FEATURE_WRAPPED_KEYS))
 			return false;
