@@ -4,41 +4,6 @@ on:
   push:
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-    container:
-      image: panchajanya1999/archlinux:latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup env
-        run: pacman -Syu --needed --noconfirm wget base-devel xmlto inetutils bc cpio python-sphinx python-sphinx_rtd_theme graphviz imagemagick git python2 python zip
-      - name: Build Kernel
-        run: |
-          export token=${TELEGRAM_BOT_TOKEN}
-          bash kramel-build.sh
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-
-  build-sdcardfs:
-
-    runs-on: ubuntu-latest
-    container:
-      image: panchajanya1999/archlinux:latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup env
-        run: pacman -Syu --needed --noconfirm wget base-devel xmlto inetutils bc cpio python-sphinx python-sphinx_rtd_theme graphviz imagemagick git python2 python zip
-      - name: Build Kernel
-        run: |
-          export token=${TELEGRAM_BOT_TOKEN}
-          sed s/EvaKernel/EvaKernel-SDCardFS/ -i kramel-build.sh
-          sed s/\-eva/\-eva-sdcardfs/ -i Makefile
-          echo "CONFIG_SDCARD_FS=y" >> arch/arm64/configs/oneplus7_defconfig
-          bash kramel-build.sh
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-
   build-oos:
 
     runs-on: ubuntu-latest
