@@ -925,7 +925,8 @@ void op_check_charger_collapse_rerun_aicl(void);
 
 void switch_mode_to_normal(void)
 {
-	usb_sw_gpio_set(0);
+	if (is_usb_pluged != 0)
+		usb_sw_gpio_set(0);
 	mcu_en_gpio_set(1);
 	op_check_charger_collapse_rerun_aicl();
 	update_disconnect_pd_status(false);
