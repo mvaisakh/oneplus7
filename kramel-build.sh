@@ -155,13 +155,13 @@ DATE=$(TZ=Asia/Kolkata date +"%Y%m%d-%s")
 	echo " "
 	if [ $COMPILER = "gcc" ]
 	then
-		msg "|| Cloning GCC 12.x baremetal ||"
-		git clone --depth=1 https://github.com/mvaisakh/gcc-arm64.git gcc64 -b gcc-new
-		git clone --depth=1 https://github.com/mvaisakh/gcc-arm.git gcc32 -b gcc-new
+		msg "|| Cloning GCC 13.x ||"
+		git clone --depth=1 https://github.com/mvaisakh/gcc-arm64.git gcc64 -b gcc-master
+		git clone --depth=1 https://github.com/mvaisakh/gcc-arm.git gcc32 -b gcc-master
 		GCC64_DIR=$KERNEL_DIR/gcc64
 		GCC32_DIR=$KERNEL_DIR/gcc32
 	fi
-	
+
 	if [ $COMPILER = "clang" ]
 	then
 		msg "|| Cloning Clang-13 ||"
@@ -236,7 +236,7 @@ build_kernel() {
 
 	if [ "$PTTG" = 1 ]
  	then
-		tg_post_msg "<b>CI Build Triggered</b>%0A<b>Device : </b><code>$MODEL [$DEVICE]</code>%0A<b>Kernel Version : </b><code>$KERVER</code>%0A<b>Branch : </b><code>$CI_BRANCH</code>%0A<b>Commit : </b><code>$COMMIT_HEAD</code>"
+		tg_post_msg "<b>Test Build</b>%0A<b>CI Build Triggered</b>%0A<b>Device : </b><code>$MODEL [$DEVICE]</code>%0A<b>Kernel Version : </b><code>$KERVER</code>%0A<b>Branch : </b><code>$CI_BRANCH</code>%0A<b>Commit : </b><code>$COMMIT_HEAD</code>"
 	fi
 
 	make O=out $DEFCONFIG
@@ -250,7 +250,7 @@ build_kernel() {
 	fi
 
 	BUILD_START=$(date +"%s")
-	
+
 	if [ $COMPILER = "clang" ]
 	then
 		MAKE+=(
