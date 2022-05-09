@@ -36,13 +36,8 @@
 #include <linux/delay.h>
 #include <linux/input/qpnp-power-on.h>
 #include <linux/spmi.h>
-#if defined(CONFIG_FB)
-#include <linux/notifier.h>
-#include <linux/fb.h>
-#elif defined(CONFIG_MSM_RDM_NOTIFY)
 #include <linux/msm_drm_notify.h>
 #include <linux/notifier.h>
-#endif /*CONFIG_FB*/
 #include <linux/moduleparam.h>
 #include <linux/msm-bus.h>
 #include "op_charge.h"
@@ -452,31 +447,6 @@ static void smblib_notify_usb_host(struct smb_charger *chg, bool enable)
 #define DEFAULT_CDP_MA		1500
 #define DEFAULT_DCP_MA		2000
 #define DEFAULT_AGAING_CHG_MA		1500
-int op_rerun_apsd(struct smb_charger *chg)
-{
-	union power_supply_propval val;
-	int rc;
-
-	rc = smblib_get_prop_usb_present(chg, &val);
-	if (rc < 0) {
-		smblib_err(chg, "Couldn't get usb present rc = %d\n", rc);
-		return rc;
-	}
-
-	if (!val.intval)
-		return 0;
-		/* rerun APSD */
-		pr_info("OP Reruning APSD type\n");
-		chg->switch_on_fastchg = false;
-		rc = smblib_masked_write(chg, CMD_APSD_REG,
-					APSD_RERUN_BIT,
-					APSD_RERUN_BIT);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't rerun APSD rc = %d\n", rc);
-			return rc;
-		}
-	return 0;
-}
 
 /********************
  * REGISTER GETTERS *
@@ -620,7 +590,6 @@ static const struct apsd_result smblib_apsd_results[] = {
 	[FLOAT] = {
 		.name	= "FLOAT",
 		.bit	= FLOAT_CHARGER_BIT,
-		.pst	= POWER_SUPPLY_TYPE_USB_DCP
 	},
 	[HVDCP2] = {
 		.name	= "HVDCP2",
@@ -829,26 +798,6 @@ int smblib_set_charge_param(struct smb_charger *chg,
 int smblib_set_usb_suspend(struct smb_charger *chg, bool suspend)
 {
 	int rc = 0;
-	int irq = chg->irq_info[USBIN_ICL_CHANGE_IRQ].irq;
-	int boot_mode = get_boot_mode();
-	pr_info("suspend=%d\n", suspend);
-
-	if (!suspend) {
-		if (boot_mode == MSM_BOOT_MODE__RF
-			|| boot_mode == MSM_BOOT_MODE__WLAN
-			|| boot_mode == MSM_BOOT_MODE__FACTORY) {
-			pr_info("RF/WLAN, ingnore suspend=%d,keep charge disable!\n",
-				suspend);
-			return 0;
-		}
-	}
-
-	if (suspend && irq) {
-		if (chg->usb_icl_change_irq_enabled) {
-			disable_irq_nosync(irq);
-			chg->usb_icl_change_irq_enabled = false;
-		}
-	}
 
 	rc = smblib_masked_write(chg, USBIN_CMD_IL_REG, USBIN_SUSPEND_BIT,
 				 suspend ? USBIN_SUSPEND_BIT : 0);
@@ -1097,7 +1046,6 @@ void smblib_hvdcp_detect_enable(struct smb_charger *chg, bool enable)
 	int rc;
 	u8 mask;
 
-	return;
 	if (chg->hvdcp_disable || chg->pd_not_supported)
 		return;
 
@@ -2682,9 +2630,6 @@ int smblib_run_aicl(struct smb_charger *chg, int type)
 		return rc;
 
 	smblib_dbg(chg, PR_MISC, "re-running AICL\n");
-	rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
-				USBIN_AICL_PERIODIC_RERUN_EN_BIT,
-				USBIN_AICL_PERIODIC_RERUN_EN_BIT);
 
 	stat = (type == RERUN_AICL) ? RERUN_AICL_BIT : RESTART_AICL_BIT;
 	rc = smblib_masked_write(chg, AICL_CMD_REG, stat, stat);
@@ -5453,37 +5398,6 @@ unsuspend_input:
 
 	return IRQ_HANDLED;
 }
-char dump_val[2048];
-static inline void op_dump_reg(struct smb_charger *chip,
-	u16 addr_start, u16 addr_end)
-{
-	u8 reg = 0;
-	u16 addr;
-	char reg_val[19];
-	int rc;
-
-	memset(dump_val, 0, sizeof(dump_val));
-	for (addr = addr_start; addr <= addr_end; addr++) {
-		memset(reg_val, 0, sizeof(reg_val));
-		rc = smblib_read(chip, addr, &reg);
-		if (rc < 0)
-			smblib_err(chip, "op_dump_reg  read error rc=%d\n",
-					rc);
-		scnprintf(reg_val,
-			sizeof(reg_val), "%x=%0x;", addr, reg);
-		strlcat(dump_val, reg_val, sizeof(dump_val));
-	}
-	 pr_info("%s\n", dump_val);
-}
-
-static void op_dump_regs(struct smb_charger *chip)
-{
-	u16 addr, count;
-
-	count = 0x80;
-	for (addr = 0x1000; addr <= 0x1700; addr += count)
-		op_dump_reg(chip, addr, (addr + count));
-}
 
 #define USB_WEAK_INPUT_UA	1400000
 #define ICL_CHANGE_DELAY_MS	1000
@@ -5786,7 +5700,6 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		} else {
 			if (vbus_val.intval > 3000) {
 				pr_err("unplg,Vbus=%d", vbus_val.intval);
-				op_dump_regs(chg);
 			}
 		}
 	}
@@ -7816,7 +7729,6 @@ int op_handle_switcher_power_ok(void)
 	if (rc < 0) {
 		pr_err("fail to read usb_voltage rc=%d\n", rc);
 	} else if (vbus_val.intval >= 2500) {
-		op_dump_regs(g_chg);
 		pr_err("vbus_val.intval=%d\n", vbus_val.intval);
 		vote(g_chg->usb_icl_votable, BOOST_BACK_VOTER, true, 0);
 		schedule_delayed_work(&g_chg->recovery_suspend_work,
@@ -8167,8 +8079,6 @@ static void op_chek_apsd_done_work(struct work_struct *work)
 	if (chg->ck_apsd_count >= APSD_CHECK_COUTNT) {
 		pr_info("apsd done error\n");
 		chg->ck_apsd_count = 0;
-		op_dump_regs(chg);
-		op_rerun_apsd(chg);
 	} else {
 		chg->ck_apsd_count++;
 		schedule_delayed_work(&chg->op_check_apsd_work,
@@ -9601,7 +9511,6 @@ static void smbchg_re_det_work(struct work_struct *work)
 	}
 
 	if (chg->redet_count >= REDET_COUTNT) {
-		op_rerun_apsd(chg);
 		chg->usb_type_redet_done = true;
 	} else {
 		chg->redet_count++;
@@ -9972,7 +9881,6 @@ static void op_heartbeat_work(struct work_struct *work)
 	if (chg->dump_count == 600) {
 		chg->dump_count = 0;
 		if ((get_prop_batt_current_now(chg) / 1000) > 0) {
-			op_dump_regs(chg);
 			aging_test_check_aicl(chg);
 		}
 	}
@@ -9982,7 +9890,6 @@ static void op_heartbeat_work(struct work_struct *work)
 		if (chg->dump_count == 600) {
 			chg->dump_count = 0;
 			if ((get_prop_batt_current_now(chg) / 1000) > 0) {
-				op_dump_regs(chg);
 				aging_test_check_aicl(chg);
 			}
 		}
