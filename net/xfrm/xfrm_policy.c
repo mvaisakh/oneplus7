@@ -799,11 +799,12 @@ int xfrm_policy_insert(int dir, struct xfrm_policy *policy, int excl)
 }
 EXPORT_SYMBOL(xfrm_policy_insert);
 
-struct xfrm_policy *xfrm_policy_bysel_ctx(struct net *net, u32 mark, u32 if_id,
-					  u8 type, int dir,
-					  struct xfrm_selector *sel,
-					  struct xfrm_sec_ctx *ctx, int delete,
-					  int *err)
+struct xfrm_policy *xfrm_policy_bysel_ctx(struct net *net,
+                                          const struct xfrm_mark *mark,
+                                          u8 type, int dir,
+                                          struct xfrm_selector *sel,
+                                          struct xfrm_sec_ctx *ctx, int delete,
+                                          int *err)
 {
 	struct xfrm_policy *pol, *ret;
 	struct hlist_head *chain;
