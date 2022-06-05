@@ -40,6 +40,9 @@
 #include <dsp/q6common.h>
 #include <dsp/audio_cal_utils.h>
 
+#include <dsp/apr_elliptic.h>
+#include <elliptic/elliptic_mixer_controls.h>
+
 #include "msm-pcm-routing-v2.h"
 #include "msm-pcm-routing-devdep.h"
 #include "msm-qti-pp-config.h"
@@ -4500,6 +4503,10 @@ static const struct snd_kcontrol_new slimbus_2_rx_mixer_controls[] = {
 	MSM_BACKEND_DAI_SLIMBUS_2_RX,
 	MSM_FRONTEND_DAI_MULTIMEDIA26, 1, 0, msm_routing_get_audio_mixer,
 	msm_routing_put_audio_mixer),
+	SOC_DOUBLE_EXT("Ultrasound", SND_SOC_NOPM,
+	MSM_BACKEND_DAI_SLIMBUS_2_RX,
+	MSM_FRONTEND_DAI_ULTRASOUND, 1, 0, msm_routing_get_audio_mixer,
+	msm_routing_put_audio_mixer),
 };
 
 static const struct snd_kcontrol_new slimbus_5_rx_mixer_controls[] = {
@@ -5046,6 +5053,10 @@ static const struct snd_kcontrol_new quaternary_mi2s_rx_mixer_controls[] = {
 	SOC_DOUBLE_EXT("MultiMedia29", SND_SOC_NOPM,
 	MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
 	MSM_FRONTEND_DAI_MULTIMEDIA29, 1, 0, msm_routing_get_audio_mixer,
+	msm_routing_put_audio_mixer),
+	SOC_DOUBLE_EXT("Ultrasound", SND_SOC_NOPM,
+	MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+	MSM_FRONTEND_DAI_ULTRASOUND, 1, 0, msm_routing_get_audio_mixer,
 	msm_routing_put_audio_mixer),
 };
 
@@ -23162,6 +23173,8 @@ static const struct snd_soc_dapm_route intercon_mi2s[] = {
 	{"QUAT_MI2S_RX Audio Mixer", "MultiMedia15", "MM_DL15"},
 	{"QUAT_MI2S_RX Audio Mixer", "MultiMedia16", "MM_DL16"},
 	{"QUAT_MI2S_RX Audio Mixer", "MultiMedia26", "MM_DL26"},
+	{"QUAT_MI2S_RX Audio Mixer", "Ultrasound", "QUAT_MI2S_DL_HL"},
+	{"SLIMBUS_2_RX Audio Mixer", "Ultrasound", "SLIM2_DL_HL"},
 	{"QUAT_MI2S_RX", NULL, "QUAT_MI2S_RX Audio Mixer"},
 
 	{"TERT_MI2S_RX Audio Mixer", "MultiMedia1", "MM_DL1"},
@@ -24665,6 +24678,7 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 	snd_soc_add_platform_controls(
 			platform, msm_routing_feature_support_mixer_controls,
 			ARRAY_SIZE(msm_routing_feature_support_mixer_controls));
+	elliptic_add_platform_controls(platform);
 	snd_soc_add_platform_controls(platform,
 			port_multi_channel_map_mixer_controls,
 			ARRAY_SIZE(port_multi_channel_map_mixer_controls));

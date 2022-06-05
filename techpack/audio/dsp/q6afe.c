@@ -29,6 +29,7 @@
 #include <ipc/apr_tal.h>
 #include "adsp_err.h"
 #include "q6afecal-hwdep.h"
+#include <dsp/apr_elliptic.h>
 
 #define WAKELOCK_TIMEOUT	5000
 
@@ -1787,6 +1788,15 @@ fail_idx:
 	kfree(config);
 	return ret;
 }
+
+afe_ultrasound_state_t elus_afe = {
+	.ptr_apr= &this_afe.apr,
+	.ptr_status= &this_afe.status,
+	.ptr_state= &this_afe.state,
+	.ptr_wait= this_afe.wait,
+	.timeout_ms= TIMEOUT_MS,
+};
+EXPORT_SYMBOL(elus_afe);
 
 static void afe_send_cal_spkr_prot_tx(int port_id)
 {
