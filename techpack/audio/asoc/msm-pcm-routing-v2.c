@@ -18555,10 +18555,15 @@ static const char * const wsa_rx_0_vi_fb_tx_lch_mux_text[] = {
 static const char * const wsa_rx_0_vi_fb_tx_rch_mux_text[] = {
 	"ZERO", "WSA_CDC_DMA_TX_0"
 };
-
+#ifndef CONFIG_SND_SOC_TFA9874_FOR_DAVI
 static const char * const mi2s_rx_vi_fb_tx_mux_text[] = {
 	"ZERO", "SENARY_TX"
 };
+#else
+static const char * const mi2s_rx_vi_fb_tx_mux_text[] = {
+	"ZERO", "QUAT_MI2S_TX"
+};
+#endif
 
 static const char * const int4_mi2s_rx_vi_fb_tx_mono_mux_text[] = {
 	"ZERO", "INT5_MI2S_TX"
@@ -18584,10 +18589,15 @@ static const int wsa_rx_0_vi_fb_tx_rch_value[] = {
 	MSM_BACKEND_DAI_MAX, MSM_BACKEND_DAI_WSA_CDC_DMA_TX_0
 };
 
-
+#ifndef CONFIG_SND_SOC_TFA9874_FOR_DAVI
 static const int mi2s_rx_vi_fb_tx_value[] = {
 	MSM_BACKEND_DAI_MAX, MSM_BACKEND_DAI_SENARY_MI2S_TX
 };
+#else
+static const int mi2s_rx_vi_fb_tx_value[] = {
+	MSM_BACKEND_DAI_MAX, MSM_BACKEND_DAI_QUATERNARY_MI2S_TX
+};
+#endif
 
 static const int int4_mi2s_rx_vi_fb_tx_mono_ch_value[] = {
 	MSM_BACKEND_DAI_MAX, MSM_BACKEND_DAI_INT5_MI2S_TX
@@ -18617,10 +18627,17 @@ static const struct soc_enum wsa_rx_0_vi_fb_rch_mux_enum =
 	ARRAY_SIZE(wsa_rx_0_vi_fb_tx_rch_mux_text),
 	wsa_rx_0_vi_fb_tx_rch_mux_text, wsa_rx_0_vi_fb_tx_rch_value);
 
+#ifndef CONFIG_SND_SOC_TFA9874_FOR_DAVI
 static const struct soc_enum mi2s_rx_vi_fb_mux_enum =
 	SOC_VALUE_ENUM_DOUBLE(0, MSM_BACKEND_DAI_PRI_MI2S_RX, 0, 0,
 	ARRAY_SIZE(mi2s_rx_vi_fb_tx_mux_text),
 	mi2s_rx_vi_fb_tx_mux_text, mi2s_rx_vi_fb_tx_value);
+#else
+static const struct soc_enum mi2s_rx_vi_fb_mux_enum =
+	SOC_VALUE_ENUM_DOUBLE(0, MSM_BACKEND_DAI_QUATERNARY_MI2S_RX, 0, 0,
+	ARRAY_SIZE(mi2s_rx_vi_fb_tx_mux_text),
+	mi2s_rx_vi_fb_tx_mux_text, mi2s_rx_vi_fb_tx_value);
+#endif
 
 static const struct soc_enum int4_mi2s_rx_vi_fb_mono_ch_mux_enum =
 	SOC_VALUE_ENUM_DOUBLE(0, MSM_BACKEND_DAI_INT4_MI2S_RX, 0, 0,
@@ -18654,10 +18671,17 @@ static const struct snd_kcontrol_new wsa_rx_0_vi_fb_rch_mux =
 	wsa_rx_0_vi_fb_rch_mux_enum, spkr_prot_get_vi_rch_port,
 	spkr_prot_put_vi_rch_port);
 
+#ifndef CONFIG_SND_SOC_TFA9874_FOR_DAVI
 static const struct snd_kcontrol_new mi2s_rx_vi_fb_mux =
 	SOC_DAPM_ENUM_EXT("PRI_MI2S_RX_VI_FB_MUX",
 	mi2s_rx_vi_fb_mux_enum, spkr_prot_get_vi_lch_port,
 	spkr_prot_put_vi_lch_port);
+#else
+static const struct snd_kcontrol_new mi2s_rx_vi_fb_mux =
+	SOC_DAPM_ENUM_EXT("QUAT_MI2S_RX_VI_FB_MUX",
+	mi2s_rx_vi_fb_mux_enum, spkr_prot_get_vi_lch_port,
+	spkr_prot_put_vi_lch_port);
+#endif
 
 static const struct snd_kcontrol_new int4_mi2s_rx_vi_fb_mono_ch_mux =
 	SOC_DAPM_ENUM_EXT("INT4_MI2S_RX_VI_FB_MONO_CH_MUX",
@@ -19564,8 +19588,13 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets_mi2s[] = {
 	/* lsm mixer definitions */
 	/* Virtual Pins to force backends ON atm */
 
+#ifndef CONFIG_SND_SOC_TFA9874_FOR_DAVI
 	SND_SOC_DAPM_MUX("PRI_MI2S_RX_VI_FB_MUX", SND_SOC_NOPM, 0, 0,
 				&mi2s_rx_vi_fb_mux),
+#else
+	SND_SOC_DAPM_MUX("QUAT_MI2S_RX_VI_FB_MUX", SND_SOC_NOPM, 0, 0,
+				&mi2s_rx_vi_fb_mux),
+#endif
 	SND_SOC_DAPM_MUX("INT4_MI2S_RX_VI_FB_MONO_CH_MUX", SND_SOC_NOPM, 0, 0,
 				&int4_mi2s_rx_vi_fb_mono_ch_mux),
 	SND_SOC_DAPM_MUX("INT4_MI2S_RX_VI_FB_STEREO_CH_MUX", SND_SOC_NOPM, 0, 0,
