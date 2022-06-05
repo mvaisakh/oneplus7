@@ -69,3 +69,32 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           USERNAME: ${{ secrets.USERNAME }}
           USEREMAIL: ${{ secrets.EMAIL }}
+
+  build-oos-clang:
+
+    runs-on: ubuntu-latest
+    container:
+      image: panchajanya1999/archlinux:latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup env
+        run: |
+          pacman -Syu --needed --noconfirm wget base-devel xmlto inetutils bc cpio python-sphinx python-sphinx_rtd_theme graphviz imagemagick git python2 python zip
+          git config --global --add safe.directory /__w/oneplus7/oneplus7
+      - name: Build Kernel
+        run: |
+          export token=${TELEGRAM_BOT_TOKEN}
+          sed s/EvaKernel/EvaKernel-OxygenOS/ -i kramel-build.sh
+          sed s/oneplus7series/oneplus7tseries/ -i kramel-build.sh
+          sed s/COMPILER=gcc/COMPILER=clang/ -i kramel-build.sh
+          sed s/\-eva/\-eva-OxygenOS/ -i Makefile
+          echo "CONFIG_SDCARD_FS=y" >> arch/arm64/configs/oneplus7_defconfig
+          git config --global user.name ${USERNAME}
+          git config --global user.email ${USEREMAIL}
+          git am -3 < .github/workflows/0001-SQUASHED-Revert-for-Touchscreen-gestures.patch
+          git am -3 < .github/workflows/0001-SQUASHED-Revert-FoD-changes-for-OOS.patch
+          bash kramel-build.sh
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          USERNAME: ${{ secrets.USERNAME }}
+          USEREMAIL: ${{ secrets.EMAIL }}

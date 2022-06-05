@@ -66,7 +66,7 @@ DEVICE="oneplus7series"
 # your device or check source
 DEFCONFIG=oneplus7_defconfig
 
-# Specify compiler. 
+# Specify compiler.
 # 'clang' or 'gcc'
 COMPILER=gcc
 
@@ -91,8 +91,8 @@ FILES=Image
 # 1 is YES | 0 is NO(default)
 BUILD_DTBO=0
 	if [ $BUILD_DTBO = 1 ]
-	then 
-		# Set this to your dtbo path. 
+	then
+		# Set this to your dtbo path.
 		# Defaults in folder out/arch/arm64/boot/dts
 		DTBO_PATH="xiaomi/violet-sm6150-overlay.dtbo"
 	fi
@@ -146,7 +146,7 @@ KERVER=$(make kernelversion)
 # Set a commit head
 COMMIT_HEAD=$(git log --oneline -1)
 
-# Set Date 
+# Set Date
 DATE=$(TZ=Asia/Kolkata date +"%Y%m%d-%s")
 
 #Now Its time for other stuffs like cloning, exporting, etc
@@ -164,10 +164,16 @@ DATE=$(TZ=Asia/Kolkata date +"%Y%m%d-%s")
 
 	if [ $COMPILER = "clang" ]
 	then
-		msg "|| Cloning Clang-13 ||"
-		git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang-llvm
+		msg "|| Cloning AOSP clang ||"
+		mkdir clang-llvm
+		mkdir gcc-aosp
+		wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r416183b.tar.gz
+		tar -C clang-llvm/ -zxvf clang-r416183b.tar.gz
 		# Toolchain Directory defaults to clang-llvm
-		TC_DIR=$KERNEL_DIR/clang-llvm
+		TC_DIR=$KERNEL_DIR/clang-llvm/
+		wget https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-11.0.0_r35.tar.gz
+		tar -C gcc-aosp/ -zxvf android-11.0.0_r35.tar.gz
+		export GCC_DIR=$KERNEL_DIR/gcc-aosp
 	fi
 
 	msg "|| Cloning Anykernel ||"
@@ -254,8 +260,9 @@ build_kernel() {
 	if [ $COMPILER = "clang" ]
 	then
 		MAKE+=(
-			CROSS_COMPILE=aarch64-linux-gnu- \
-			CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+			CROSS_COMPILE=$GCC_DIR/bin/aarch64-linux-android- \
+			CLANG_TRIPLE=aarch64-linux-gnu- \
+			LD=ld.lld \
 			CC=clang \
 			AR=llvm-ar \
 			OBJDUMP=llvm-objdump \
@@ -268,7 +275,7 @@ build_kernel() {
 			CROSS_COMPILE=aarch64-elf-
 		)
 	fi
-	
+
 	if [ $SILENCE = "1" ]
 	then
 		MAKE+=( -s )
