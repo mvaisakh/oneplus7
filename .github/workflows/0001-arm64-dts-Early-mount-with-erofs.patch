@@ -1,0 +1,41 @@
+From c82db6f6514aa5a6d9f0a4a31057a4e76350db9e Mon Sep 17 00:00:00 2001
+From: John Galt <johngaltfirstrun@gmail.com>
+Date: Sat, 11 Jun 2022 14:18:22 +0000
+Subject: [PATCH] arm64/dts: Early mount with erofs
+
+Signed-off-by: Vaisakh Murali <mvaisakh@statixos.com>
+---
+ arch/arm64/boot/dts/qcom/sm8150.dtsi | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8150.dtsi b/arch/arm64/boot/dts/qcom/sm8150.dtsi
+index 7c31960df901..0480f71cd42b 100644
+--- a/arch/arm64/boot/dts/qcom/sm8150.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8150.dtsi
+@@ -565,17 +565,17 @@
+ 				compatible = "android,fstab";
+ 				vendor {
+ 					compatible = "android,vendor";
+-					dev = "/dev/block/platform/soc/1d84000.sdhci/by-name/vendor";
+-					type = "ext4";
+-					mnt_flags = "ro,barrier=1,discard";
++					dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/vendor";
++					type = "erofs";
++					mnt_flags = "ro";
+ 					fsmgr_flags = "wait,slotselect,avb";
+ 					status = "ok";
+ 				};
+ 				odm {
+ 					compatible = "android,odm";
+-					dev = "/dev/block/platform/soc/8804000.sdhci/by-name/odm";
+-					type = "ext4";
+-					mnt_flags = "ro,barrier=1,discard";
++					dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/odm";
++					type = "erofs";
++					mnt_flags = "ro";
+ 					fsmgr_flags = "wait,slotselect,avb";
+ 					status = "ok";
+ 				};
+-- 
+2.30.2
+
